@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <SDL.h>
+#include <./SDL_ttf.h>
 #include "Constants.h"
 
 SDL_Window* window = NULL;
@@ -15,6 +17,19 @@ float deltatime = 0.0f;
 int p1Score = 0;
 int p2Score = 0;
 
+TTF_Font* font = NULL;
+SDL_Surface* p1ScoreTextSurface = NULL;
+SDL_Surface* p2ScoreTextSurface = NULL;
+SDL_Texture* p1ScoreTextTexture = NULL;
+SDL_Texture* p2ScoreTextTexture = NULL;
+
+char* int_to_string(int number)
+{
+	//char* str = (int*)malloc(sizeof(int));
+
+	//for(int i = 0; i < )
+}
+
 struct game_object
 {
 	float x;
@@ -25,6 +40,40 @@ struct game_object
 	float velocity_y;
 	
 } ball, paddle1, paddle2;
+
+void initializeTTF()
+{
+	printf("\nInitializing SDL_TTF...");
+	if (TTF_Init() != 0)
+		printf("\nERROR initializing SDL_TTF: %s", TTF_GetError());
+	else
+		printf("\nSDL_TTF Initialized!");
+
+	// Loading Font
+	font = TTF_OpenFont("../Dependencies/Fonts/FFFFORWA.TTF", 32);
+	if (!font)
+		printf("\nError Loading Font: %s", TTF_GetError());
+	else
+		printf("\nFont Initialized!");
+
+	int style;
+	style = TTF_GetFontStyle(font);
+	printf("\nThe font style is:");
+	if (style == TTF_STYLE_NORMAL)
+		printf(" normal!");
+	else {
+		if (style & TTF_STYLE_BOLD)
+			printf(" bold!");
+		if (style & TTF_STYLE_ITALIC)
+			printf(" italic!");
+		if (style & TTF_STYLE_UNDERLINE)
+			printf(" underline!");
+	}
+	printf("\n");
+
+	// To set Font Style
+	//TTF_SetFontStyle(font, TTF_STYLE_BOLD | TTF_STYLE_ITALIC);
+}
 
 int initializeWindow()
 {
@@ -129,7 +178,7 @@ void resetgame(int point)
 {
 	if (point == 1)
 		p1Score += 1;
-	else
+	else if (point  == 2)
 		p2Score += 1;
 
 	printf("\nP1 SCORE: %d", p1Score);
@@ -229,16 +278,43 @@ void update()
 		}
 	}
 
-	// TODO: Game Over Scenario
-	// If ball goes behind the paddle1 the game is over
+	// Game Over Scenario
+	// If ball goes behind the paddle1 or paddle2 the game resets
 	if (ball.x < (0.0f - ball.width))
-		resetgame(1);
-	else if (ball.x > WINDOW_WIDTH)
 		resetgame(2);
+	else if (ball.x > WINDOW_WIDTH)
+		resetgame(1);
 }
 
 void render()
 {
+	char strP1Score[50];
+	char strP2Score[50];
+	SDL_Color textColor = { 255, 255, 255, 255 };
+	sprintf_s(strP1Score, sizeof(strP1Score), "%10d", p1Score);
+	sprintf_s(strP2Score, sizeof(strP2Score), "%10d", p2Score);
+
+	p1ScoreTextSurface = TTF_RenderText_Solid(font, strP1Score, textColor);
+	//SDL_FreeSurface(p1ScoreTextSurface);
+	//p1ScoreTextSurface = NULL;
+
+	p2ScoreTextSurface = TTF_RenderText_Solid(font, strP2Score, textColor);
+	//SDL_FreeSurface(p2ScoreTextSurface);
+	//p2ScoreTextSurface = NULL;
+
+	p1ScoreTextTexture = SDL_CreateTextureFromSurface(renderer, p1ScoreTextSurface);
+	p2ScoreTextTexture = SDL_CreateTextureFromSurface(renderer, p2ScoreTextSurface);
+
+	SDL_Rect p1ScoreTextRect;
+	p1ScoreTextRect.x = 0.15 * WINDOW_HEIGHT;
+	p1ScoreTextRect.y = 50;
+	SDL_QueryTexture(p1ScoreTextTexture, NULL, NULL, &p1ScoreTextRect.w, &p1ScoreTextRect.h);
+
+	SDL_Rect p2ScoreTextRect;
+	p2ScoreTextRect.x = 0.85 * WINDOW_HEIGHT;
+	p2ScoreTextRect.y = 50;
+	SDL_QueryTexture(p2ScoreTextTexture, NULL, NULL, &p2ScoreTextRect.w, &p2ScoreTextRect.h);
+
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
@@ -267,12 +343,16 @@ void render()
 	SDL_RenderFillRect(renderer, &ball_rect);
 	SDL_RenderFillRect(renderer, &paddle1_rect);
 	SDL_RenderFillRect(renderer, &paddle2_rect);
+	SDL_RenderCopy(renderer, p1ScoreTextTexture, NULL, &p1ScoreTextRect);
+	SDL_RenderCopy(renderer, p2ScoreTextTexture, NULL, &p2ScoreTextRect);
 
 	SDL_RenderPresent(renderer);	// this basically swaps front and back buffers (i.e. the two virtual screen buffers)
 }
 
 void destroyWindow()
 {
+	SDL_DestroyTexture(p1ScoreTextTexture);
+	SDL_DestroyTexture(p2ScoreTextTexture);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
@@ -282,7 +362,9 @@ int main(int argc, char* args[])
 {
 	fprintf(stdout, "Welcome to Pong!");
 
+	// Initializing neccesary files and functionalities
 	game_is_running = initializeWindow();
+	initializeTTF();
 
 	setup();
 
