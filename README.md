@@ -1,2 +1,2 @@
 # Pong
-A simple Pong Game made using SDL using Visual Studio Community Edition 2019.
+A simple Pong Game made using SDL and C++.
